@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import axios from 'axios'; // Ensure axios is installed or use fetch API
+import async from 'async';
 
 const DashboardContainer = () => {
     const [rainingData, setRainingData] = useState(null);
@@ -12,20 +13,23 @@ const DashboardContainer = () => {
     const [responses, setResponses] = useState([])
 
     useEffect(() => {
-        const fetchData = async () => {
-            try {
-                const responses = await Promise.all([
-                    axios.get('https://esp-backend.vercel.app/api/raining/get-raining'),
-                    axios.get('https://esp-backend.vercel.app/api/fanState/get-fanState'),
-                    axios.get('https://esp-backend.vercel.app/api/waterPumpState/get-waterPumpState'),
-                    axios.get('https://esp-backend.vercel.app/api/flora/get-flora'),
-                    axios.get('https://esp-backend.vercel.app/api/lysd/get-lysd')
-                ]);
-                setResponses(responses.map(response => response.data));
-            } catch (error) {
-                console.error('Error fetching data:', error);
-            }
-        };
+       
+const fetchData = () => {
+    async.parallel({
+        rainingData: callback => axios.get('https://esp-backend.vercel.app/api/raining/get-raining').then(res => callback(null, res.data)).catch(callback),
+        fanState: callback => axios.get('https://esp-backend.vercel.app/api/fanState/get-fanState').then(res => callback(null, res.data)).catch(callback),
+        waterPumpState: callback => axios.get('https://esp-backend.vercel.app/api/waterPumpState/get-waterPumpState').then(res => callback(null, res.data)).catch(callback),
+        floraData: callback => axios.get('https://esp-backend.vercel.app/api/flora/get-flora').then(res => callback(null, res.data)).catch(callback),
+        lysdData: callback => axios.get('https://esp-backend.vercel.app/api/lysd/get-lysd').then(res => callback(null, res.data)).catch(callback)
+    }, (err, results) => {
+        if (err) {
+            console.error('Error fetching data:', err);
+            return;
+        }
+        // Handle results here
+        setResponses([results.rainingData, results.fanState, results.waterPumpState, results.floraData, results.lysdData]);
+    });
+}
         const intervalId = setInterval(fetchData, 2000); // Fetch every 2 seconds
         return () => clearInterval(intervalId); // Clean up on unmount
     }, []);
